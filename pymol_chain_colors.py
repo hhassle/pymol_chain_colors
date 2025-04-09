@@ -12,7 +12,7 @@ def load_chain_values_from_csv(csv_path):
     - A dictionary mapping chain names to numerical values.
     """
     chain_value_dict = {}
-    with open(csv_path, newline='') as csvfile:
+    with open(csv_path, newline='',encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             try:

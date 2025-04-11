@@ -12,7 +12,7 @@ def load_chain_values_from_csv(csv_path):
     - A dictionary mapping chain names to numerical values.
     """
     chain_value_dict = {}
-    with open(csv_path, newline='',encoding='utf-8-sig') as csvfile:
+    with open(csv_path, newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             try:
@@ -23,12 +23,13 @@ def load_chain_values_from_csv(csv_path):
                 print(f"Skipping invalid row: {row}")
     return chain_value_dict
 
-def color_chains_by_value(chain_value_dict, cmap_name="viridis", min_val=None, max_val=None):
+def color_chains_by_value(chain_value_dict, prefix, cmap_name="viridis", min_val=None, max_val=None):
     """
     Colors chains based on a dictionary of chain-to-value mappings using a color gradient.
     
     Parameters:
     - chain_value_dict: Dictionary mapping chain identifiers to numerical values.
+    - prefix: PyMOL object or selection prefix (e.g., 'mymol' or 'mymol and').
     - cmap_name: Name of a Matplotlib colormap (e.g., "coolwarm", "viridis").
     - min_val: Minimum value for color normalization (optional).
     - max_val: Maximum value for color normalization (optional).
@@ -36,7 +37,7 @@ def color_chains_by_value(chain_value_dict, cmap_name="viridis", min_val=None, m
     if not chain_value_dict:
         print("No chains provided for coloring.")
         return
-    
+
     # Determine normalization range
     if min_val is None:
         min_val = min(chain_value_dict.values())
@@ -52,19 +53,28 @@ def color_chains_by_value(chain_value_dict, cmap_name="viridis", min_val=None, m
         color_name = f"chain_color_{i}"
 
         cmd.set_color(color_name, rgb)
-        cmd.color(color_name, f"chain {chain}")
-    
+        cmd.color(color_name, f"{prefix} and chain {chain}")
+
     print(f"Colored {len(chain_value_dict)} chains using the '{cmap_name}' colormap.")
     print(f"Value range: {min_val:.3f} to {max_val:.3f}")
 
-def pymol_chain_colors(csv_path, cmap_name="viridis", min_val=None, max_val=None):
+def pymol_chain_colors(csv_path, prefix, cmap_name="viridis", min_val=None, max_val=None):
     """
     Main function for use in PyMOL.
     
-    Arguments from PyMOL are always passed as strings, so min_val and max_val must be cast.
+    Parameters:
+    - csv_path: Path to CSV file with 'chain' and 'value' columns.
+    - prefix: Molecule or selection prefix (e.g., 'mymol', 'mymol and (resn GLY)').
+    - cmap_name: Name of a matplotlib colormap.
+    - min_val: Optional minimum value for normalization.
+    - max_val: Optional maximum value for normalization.
     """
     if not os.path.isfile(csv_path):
         print(f"File not found: {csv_path}")
+        return
+
+    if not prefix:
+        print("You must specify a molecule prefix (e.g., 'mymol').")
         return
 
     # Convert min and max values from strings if provided
@@ -76,7 +86,7 @@ def pymol_chain_colors(csv_path, cmap_name="viridis", min_val=None, max_val=None
         return
 
     chain_values = load_chain_values_from_csv(csv_path)
-    color_chains_by_value(chain_values, cmap_name, min_val, max_val)
+    color_chains_by_value(chain_values, prefix, cmap_name, min_val, max_val)
 
 # Register for PyMOL
 cmd.extend("pymol_chain_colors", pymol_chain_colors)

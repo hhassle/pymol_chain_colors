@@ -23,9 +23,34 @@ def load_chain_values_from_csv(csv_path):
                 print(f"Skipping invalid row: {row}")
     return chain_value_dict
 
+def get_split_chain_objects(prefix, chain_id):
+    """
+    Check if chains have been split and return appropriate object names.
+    
+    Parameters:
+    - prefix: Original object prefix
+    - chain_id: Chain identifier (e.g., 'A', 'B')
+    
+    Returns:
+    - List of object names that match the chain
+    """
+    # Get all object names in PyMOL
+    all_objects = cmd.get_names('objects')
+    
+    # Look for split chain objects (format: prefix_chainID)
+    split_objects = []
+    expected_split_name = f"{prefix}_{chain_id}"
+    
+    for obj_name in all_objects:
+        if obj_name == expected_split_name:
+            split_objects.append(obj_name)
+    
+    return split_objects
+
 def color_chains_by_value(chain_value_dict, prefix, cmap_name="viridis", min_val=None, max_val=None):
     """
     Colors chains based on a dictionary of chain-to-value mappings using a color gradient.
+    Handles both regular chains and split chains.
     
     Parameters:
     - chain_value_dict: Dictionary mapping chain identifiers to numerical values.
@@ -47,15 +72,34 @@ def color_chains_by_value(chain_value_dict, prefix, cmap_name="viridis", min_val
     value_range = max_val - min_val or 1  # Avoid division by zero
     cmap = plt.get_cmap(cmap_name)
 
+    colored_count = 0
+    
     for i, (chain, value) in enumerate(chain_value_dict.items()):
         normalized_value = 1 - (value - min_val) / value_range
         rgb = cmap(normalized_value)[:3]  # ignore alpha
         color_name = f"chain_color_{i}"
 
         cmd.set_color(color_name, rgb)
-        cmd.color(color_name, f"{prefix} and chain {chain}")
+        
+        # Try to color regular chains first
+        regular_selection = f"{prefix} and chain {chain}"
+        regular_count = cmd.count_atoms(regular_selection)
+        
+        if regular_count > 0:
+            cmd.color(color_name, regular_selection)
+            colored_count += 1
+            print(f"Colored chain {chain} in original object ({regular_count} atoms)")
+        
+        # Check for split chain objects
+        split_objects = get_split_chain_objects(prefix, chain)
+        for split_obj in split_objects:
+            split_count = cmd.count_atoms(split_obj)
+            if split_count > 0:
+                cmd.color(color_name, split_obj)
+                colored_count += 1
+                print(f"Colored split chain object {split_obj} ({split_count} atoms)")
 
-    print(f"Colored {len(chain_value_dict)} chains using the '{cmap_name}' colormap.")
+    print(f"Colored {colored_count} chain objects using the '{cmap_name}' colormap.")
     print(f"Value range: {min_val:.3f} to {max_val:.3f}")
 
 def pymol_chain_colors(csv_path, prefix, cmap_name="viridis", min_val=None, max_val=None):
